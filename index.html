@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIPSEMPIRE | Algorithmic Trading & Market Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        market: {
+                            bg: '#0c0c0f',
+                            card: '#15151c',
+                            up: '#00d084',
+                            down: '#ff4757',
+                            accent: '#3b82f6',
+                            gold: '#f59e0b',
+                            text: '#e2e8f0',
+                            muted: '#64748b'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            background-color: #0c0c0f;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Trading View Grid Background */
+        .trading-grid {
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+        
+        /* Candlestick Chart Styles */
+        .candlestick {
+            width: 8px;
+            position: relative;
+            display: inline-block;
+            margin: 0 1px;
+        }
+        
+        .candle-body {
+            width: 100%;
+            border-radius: 1px;
+        }
+        
+        .candle-wick {
+            position: absolute;
+            width: 1px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: currentColor;
+        }
+        
+        .bullish {
+            color: #00d084;
+        }
+        
+        .bullish .candle-body {
+            background: #00d084;
+        }
+        
+        .bearish {
+            color: #ff4757;
+        }
+        
+        .bearish .candle-body {
+            background: #ff4757;
+        }
+        
+        /* Ticker Animation */
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        .ticker-wrap {
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        
+        .ticker-content {
+            display: inline-block;
+            animation: ticker 30s linear infinite;
+        }
+        
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 0 2rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Glass Card */
+        .glass-card {
+            background: rgba(21, 21, 28, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        /* Order Book Styles */
+        .order-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            position: relative;
+        }
+        
+        .order-row::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            opacity: 0.2;
+            transition: width 0.3s;
+        }
+        
+        .bid-row::before {
+            background: #00d084;
+        }
+        
+        .ask-row::before {
+            background: #ff4757;
+        }
+        
+        /* Pulse Animation for Live Indicator */
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .live-dot {
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #3b82f6 0%, #00d084 50%, #f59e0b 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0c0c0f;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        
+        /* Neon Glow */
+        .glow-green {
+            box-shadow: 0 0 20px rgba(0, 208, 132, 0.3);
+        }
+        
+        .glow-red {
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.3);
+        }
+        
+        /* Terminal Cursor */
+        .cursor-blink::after {
+            content: '█';
+            animation: blink 1s step-end infinite;
+            color: #00d084;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Top Bar -->
+    <div class="bg-market-card border-b border-white/5">
+        <div class="max-w-full mx-auto px-4 py-2 flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-4">
+                <span class="flex items-center text-market-up">
+                    <span class="w-2 h-2 bg-market-up rounded-full live-dot mr-2"></span>
+                    MARKET OPEN
+                </span>
+                <span class="text-market-muted">|</span>
+                <span class="font-mono text-market-muted">JSE ALL SHARE: <span class="text-market-up">▲ 1.24%</span></span>
+                <span class="font-mono text-market-muted">USD/ZAR: <span class="text-market-down">▼ 0.32%</span></span>
+            </div>
+            <div class="flex items-center space-x-4 font-mono">
+                <span class="text-market-muted">PRETORIA, SA</span>
+                <span class="text-market-accent" id="clock">00:00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-market-bg/95 backdrop-blur-md border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-market-accent to-market-up rounded flex items-center justify-center">
+                        <i data-lucide="candlestick-chart" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <span class="font-bold text-xl tracking-wider">PIPSEMPIRE</span>
+                        <span class="text-xs text-market-muted block font-mono">ALGORITHMIC TRADING</span>
+                    </div>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#markets" class="text-sm text-market-muted hover:text-white transition-colors">MARKETS</a>
+                    <a href="#incinerate" class="text-sm text-market-muted hover:text-white transition-colors">INCINERATE BOT</a>
+                    <a href="#performance" class="text-sm text-market-muted hover:text-white transition-colors">PERFORMANCE</a>
+                    <a href="#about" class="text-sm text-market-muted hover:text-white transition-colors">ABOUT</a>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button class="px-4 py-2 text-sm font-medium text-market-accent border border-market-accent/30 rounded hover:bg-market-accent/10 transition-colors">
+                        LOGIN
+                    </button>
+                    <button class="px-4 py-2 text-sm font-medium bg-market-up text-black rounded hover:bg-market-up/90 transition-colors font-bold">
+                        START TRADING
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Stock Ticker -->
+    <div class="bg-market-card border-b border-white/5 overflow-hidden py-3">
+        <div class="ticker-wrap">
+            <div class="ticker-content">
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">EUR/USD</span>
+                    <span class="text-market-up">1.0845 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">GBP/USD</span>
+                    <span class="text-market-down">1.2632 ▼</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">USD/JPY</span>
+                    <span class="text-market-up">149.82 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">GOLD</span>
+                    <span class="text-market-up">2,045.30 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">BTC/USD</span>
+                    <span class="text-market-down">43,250.00 ▼</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">S&P 500</span>
+                    <span class="text-market-up">4,783.45 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">NASDAQ</span>
+                    <span class="text-market-up">15,123.67 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">OIL</span>
+                    <span class="text-market-down">72.45 ▼</span>
+                </div>
+                <!-- Duplicate for seamless loop -->
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">EUR/USD</span>
+                    <span class="text-market-up">1.0845 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">GBP/USD</span>
+                    <span class="text-market-down">1.2632 ▼</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">USD/JPY</span>
+                    <span class="text-market-up">149.82 ▲</span>
+                </div>
+                <div class="ticker-item">
+                    <span class="text-market-muted mr-2">GOLD</span>
+                    <span class="text-market-up">2,045.30 ▲</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section with Live Chart -->
+    <section class="relative min-h-screen trading-grid overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-market-bg via-transparent to-market-bg"></div>
+        
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-20">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Main Chart Area -->
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="glass-card rounded-lg p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <div>
+                                <h1 class="text-3xl font-bold mb-1">INCINERATE <span class="text-market-up">PRO</span></h1>
+                                <p class="text-market-muted text-sm">Algorithmic Trading System // Accuracy: <span class="text-market-up font-mono">77.7%</span></p>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="text-right">
+                                    <div class="text-2xl font-mono font-bold text-market-up">+2,847.32</div>
+                                    <div class="text-sm text-market-up">+12.4% (24h)</div>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-market-up/20 flex items-center justify-center">
+                                    <i data-lucide="trending-up" class="w-6 h-6 text-market-up"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Live Chart Canvas -->
+                        <div class="relative h-80 w-full">
+                            <canvas id="mainChart"></canvas>
+                            <div class="absolute top-4 right-4 flex space-x-2">
+                                <span class="px-2 py-1 bg-market-up/20 text-market-up text-xs rounded font-mono">LIVE</span>
+                                <span class="px-2 py-1 bg-white/5 text-market-muted text-xs rounded font-mono">1H</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Controls -->
+                        <div class="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-xs bg-market-accent text-white rounded">1H</button>
+                                <button class="px-3 py-1 text-xs text-market-muted hover:text-white transition-colors">4H</button>
+                                <button class="px-3 py-1 text-xs text-market-muted hover:text-white transition-colors">1D</button>
+                                <button class="px-3 py-1 text-xs text-market-muted hover:text-white transition-colors">1W</button>
+                            </div>
+                            <div class="flex items-center space-x-4 text-xs font-mono">
+                                <span class="text-market-muted">VOL: <span class="text-white">24.5M</span></span>
+                                <span class="text-market-muted">HIGH: <span class="text-white">1.2456</span></span>
+                                <span class="text-market-muted">LOW: <span class="text-white">1.2389</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Trading Pairs Grid -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="glass-card rounded-lg p-4 hover:border-market-up/50 transition-colors cursor-pointer">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-sm">EUR/USD</span>
+                                <span class="text-xs text-market-up">▲ 0.45%</span>
+                            </div>
+                            <div class="font-mono text-lg">1.0845</div>
+                            <div class="h-8 mt-2 flex items-end space-x-1">
+                                <div class="w-1 bg-market-up/60 h-3"></div>
+                                <div class="w-1 bg-market-up/60 h-5"></div>
+                                <div class="w-1 bg-market-down/60 h-4"></div>
+                                <div class="w-1 bg-market-up/60 h-6"></div>
+                                <div class="w-1 bg-market-up/60 h-8"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card rounded-lg p-4 hover:border-market-up/50 transition-colors cursor-pointer">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-sm">GBP/USD</span>
+                                <span class="text-xs text-market-down">▼ 0.12%</span>
+                            </div>
+                            <div class="font-mono text-lg">1.2632</div>
+                            <div class="h-8 mt-2 flex items-end space-x-1">
+                                <div class="w-1 bg-market-up/60 h-4"></div>
+                                <div class="w-1 bg-market-down/60 h-6"></div>
+                                <div class="w-1 bg-market-down/60 h-5"></div>
+                                <div class="w-1 bg-market-up/60 h-3"></div>
+                                <div class="w-1 bg-market-down/60 h-4"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card rounded-lg p-4 hover:border-market-up/50 transition-colors cursor-pointer">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-sm">USD/ZAR</span>
+                                <span class="text-xs text-market-up">▲ 0.89%</span>
+                            </div>
+                            <div class="font-mono text-lg">18.9456</div>
+                            <div class="h-8 mt-2 flex items-end space-x-1">
+                                <div class="w-1 bg-market-up/60 h-5"></div>
+                                <div class="w-1 bg-market-up/60 h-7"></div>
+                                <div class="w-1 bg-market-up/60 h-6"></div>
+                                <div class="w-1 bg-market-down/60 h-4"></div>
+                                <div class="w-1 bg-market-up/60 h-8"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="glass-card rounded-lg p-4 hover:border-market-up/50 transition-colors cursor-pointer">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="font-bold text-sm">GOLD</span>
+                                <span class="text-xs text-market-up">▲ 1.24%</span>
+                            </div>
+                            <div class="font-mono text-lg">2,045.30</div>
+                            <div class="h-8 mt-2 flex items-end space-x-1">
+                                <div class="w-1 bg-market-down/60 h-3"></div>
+                                <div class="w-1 bg-market-up/60 h-5"></div>
+                                <div class="w-1 bg-market-up/60 h-7"></div>
+                                <div class="w-1 bg-market-up/60 h-6"></div>
+                                <div class="w-1 bg-market-up/60 h-8"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sidebar: Order Book & Stats -->
+                <div class="space-y-6">
+                    <!-- Order Book -->
+                    <div class="glass-card rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-bold text-sm">ORDER BOOK</h3>
+                            <span class="text-xs text-market-muted">XAU/USD</span>
+                        </div>
+                        
+                        <!-- Asks (Sells) -->
+                        <div class="space-y-1 mb-2">
+                            <div class="order-row ask-row" style="--depth: 20%">
+                                <span class="text-market-down">2,045.80</span>
+                                <span class="text-market-muted">1.245</span>
+                                <span class="text-market-muted text-right">2,548</span>
+                            </div>
+                            <div class="order-row ask-row" style="--depth: 35%">
+                                <span class="text-market-down">2,045.65</span>
+                                <span class="text-market-muted">2.156</span>
+                                <span class="text-market-muted text-right">4,892</span>
+                            </div>
+                            <div class="order-row ask-row" style="--depth: 15%">
+                                <span class="text-market-down">2,045.50</span>
+                                <span class="text-market-muted">0.894</span>
+                                <span class="text-market-muted text-right">1,834</span>
+                            </div>
+                            <div class="order-row ask-row" style="--depth: 45%">
+                                <span class="text-market-down">2,045.35</span>
+                                <span class="text-market-muted">3.421</span>
+                                <span class="text-market-muted text-right">6,234</span>
+                            </div>
+                            <div class="order-row ask-row" style="--depth: 25%">
+                                <span class="text-market-down">2,045.20</span>
+                                <span class="text-market-muted">1.567</span>
+                                <span class="text-market-muted text-right">3,123</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Current Price -->
+                        <div class="py-3 text-center border-y border-white/5">
+                            <div class="text-2xl font-mono font-bold text-market-up">2,045.12</div>
+                            <div class="text-xs text-market-up">▲ 0.24%</div>
+                        </div>
+                        
+                        <!-- Bids (Buys) -->
+                        <div class="space-y-1 mt-2">
+                            <div class="order-row bid-row" style="--depth: 30%">
+                                <span class="text-market-up">2,045.05</span>
+                                <span class="text-market-muted">2.134</span>
+                                <span class="text-market-muted text-right">4,356</span>
+                            </div>
+                            <div class="order-row bid-row" style="--depth: 20%">
+                                <span class="text-market-up">2,044.90</span>
+                                <span class="text-market-muted">1.456</span>
+                                <span class="text-market-muted text-right">2,984</span>
+                            </div>
+                            <div class="order-row bid-row" style="--depth: 40%">
+                                <span class="text-market-up">2,044.75</span>
+                                <span class="text-market-muted">2.789</span>
+                                <span class="text-market-muted text-right">5,672</span>
+                            </div>
+                            <div class="order-row bid-row" style="--depth: 15%">
+                                <span class="text-market-up">2,044.60</span>
+                                <span class="text-market-muted">0.987</span>
+                                <span class="text-market-muted text-right">2,014</span>
+                            </div>
+                            <div class="order-row bid-row" style="--depth: 25%">
+                                <span class="text-market-up">2,044.45</span>
+                                <span class="text-market-muted">1.654</span>
+                                <span class="text-market-muted text-right">3,421</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Trades -->
+                    <div class="glass-card rounded-lg p-4">
+                        <h3 class="font-bold text-sm mb-4">RECENT TRADES</h3>
+                        <div class="space-y-2 font-mono text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="text-market-muted">14:32:05</span>
+                                <span class="text-market-up">BUY</span>
+                                <span>2,045.12</span>
+                                <span class="text-market-muted">0.5</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-market-muted">14:31:58</span>
+                                <span class="text-market-down">SELL</span>
+                                <span>2,045.08</span>
+                                <span class="text-market-muted">1.2</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-market-muted">14:31:42</span>
+                                <span class="text-market-up">BUY</span>
+                                <span>2,045.15</span>
+                                <span class="text-market-muted">0.8</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-market-muted">14:31:28</span>
+                                <span class="text-market-up">BUY</span>
+                                <span>2,045.10</span>
+                                <span class="text-market-muted">2.1</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-market-muted">14:31:15</span>
+                                <span class="text-market-down">SELL</span>
+                                <span>2,045.05</span>
+                                <span class="text-market-muted">0.3</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Stats -->
+                    <div class="glass-card rounded-lg p-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-center">
+                                <div class="text-xs text-market-muted mb-1">24H HIGH</div>
+                                <div class="font-mono text-market-up">2,048.90</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-market-muted mb-1">24H LOW</div>
+                                <div class="font-mono text-market-down">2,041.25</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-market-muted mb-1">VOLUME</div>
+                                <div class="font-mono text-white">45.2K</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-xs text-market-muted mb-1">SPREAD</div>
+                                <div class="font-mono text-white">0.07</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- INCINERATE Bot Section -->
+    <section id="incinerate" class="py-20 bg-market-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-market-up/10 border border-market-up/30 mb-6">
+                    <span class="w-2 h-2 bg-market-up rounded-full live-dot"></span>
+                    <span class="text-market-up text-sm font-mono">SYSTEM OPERATIONAL</span>
+                </div>
+                <h2 class="text-4xl md:text-5xl font-bold mb-4">INCINERATE <span class="text-market-up">TRADING ENGINE</span></h2>
+                <p class="text-market-muted max-w-2xl mx-auto">
+                    Advanced algorithmic trading system with machine learning capabilities. 
+                    Emotion-free execution 24/5 across forex, commodities, and indices.
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-card rounded-xl p-8 border border-market-up/20 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-market-up/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <div class="relative">
+                        <div class="w-14 h-14 rounded-lg bg-market-up/20 flex items-center justify-center mb-6">
+                            <i data-lucide="cpu" class="w-7 h-7 text-market-up"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Algorithmic Precision</h3>
+                        <p class="text-market-muted text-sm leading-relaxed mb-4">
+                            Machine learning models analyze 50+ market indicators in real-time to identify high-probability entry points with 77.7% accuracy.
+                        </p>
+                        <div class="flex items-center space-x-4 text-xs font-mono">
+                            <span class="text-market-up">◄ 0.003s latency</span>
+                            <span class="text-market-muted">|</span>
+                            <span class="text-white">MT4/MT5/Deriv</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="glass-card rounded-xl p-8 border border-market-accent/20 relative overflow-hidden group lg:scale-105">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-market-accent/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <div class="relative">
+                        <div class="w-14 h-14 rounded-lg bg-market-accent/20 flex items-center justify-center mb-6">
+                            <i data-lucide="shield-check" class="w-7 h-7 text-market-accent"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">Risk Management</h3>
+                        <p class="text-market-muted text-sm leading-relaxed mb-4">
+                            Automated stop-loss and take-profit calculations with dynamic position sizing. Never risk more than 2% per trade.
+                        </p>
+                        <div class="flex items-center space-x-4 text-xs font-mono">
+                            <span class="text-market-accent">Max DD: 15%</span>
+                            <span class="text-market-muted">|</span>
+                            <span class="text-white">SL/TP Auto</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="glass-card rounded-xl p-8 border border-market-gold/20 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-market-gold/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                    <div class="relative">
+                        <div class="w-14 h-14 rounded-lg bg-market-gold/20 flex items-center justify-center mb-6">
+                            <i data-lucide="clock" class="w-7 h-7 text-market-gold"></i>
+                        </div>
+                        <h3 class="text-xl font-bold mb-3">24/5 Automation</h3>
+                        <p class="text-market-muted text-sm leading-relaxed mb-4">
+                            Continuous market monitoring and execution. No emotional trading decisions. Full support and feedback included.
+                        </p>
+                        <div class="flex items-center space-x-4 text-xs font-mono">
+                            <span class="text-market-gold">24/5 Active</span>
+                            <span class="text-market-muted">|</span>
+                            <span class="text-white">Full Support</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="mt-16 glass-card rounded-xl p-8">
+                <div class="grid md:grid-cols-4 gap-8 text-center">
+                    <div>
+                        <div class="text-4xl font-mono font-bold text-market-up mb-2">77.7%</div>
+                        <div class="text-sm text-market-muted">Win Rate</div>
+                        <div class="text-xs text-market-up mt-1">▲ Verified</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-mono font-bold text-white mb-2">1:3.2</div>
+                        <div class="text-sm text-market-muted">Risk/Reward</div>
+                        <div class="text-xs text-market-up mt-1">▲ Optimized</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-mono font-bold text-market-accent mb-2">0.003s</div>
+                        <div class="text-sm text-market-muted">Execution</div>
+                        <div class="text-xs text-market-up mt-1">▲ Ultra-Low</div>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-mono font-bold text-market-gold mb-2">24/5</div>
+                        <div class="text-sm text-market-muted">Trading Hours</div>
+                        <div class="text-xs text-market-up mt-1">▲ Active</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Live Trading Terminal Preview -->
+    <section class="py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-xl overflow-hidden border border-white/10">
+                <div class="bg-market-card px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <i data-lucide="terminal" class="w-5 h-5 text-market-accent"></i>
+                        <span class="font-mono text-sm">INCINERATE_TERMINAL_v2.4.1</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 rounded-full bg-market-down"></span>
+                        <span class="w-3 h-3 rounded-full bg-market-gold"></span>
+                        <span class="w-3 h-3 rounded-full bg-market-up"></span>
+                    </div>
+                </div>
+                <div class="p-6 font-mono text-sm bg-black/50">
+                    <div class="text-market-muted mb-2">// System Initialization...</div>
+                    <div class="text-market-up mb-1">[14:32:05] CONNECTED_TO_BROKER: JustMarkets (FSP 51114)</div>
+                    <div class="text-market-accent mb-1">[14:32:06] LOADING_STRATEGY: INCINERATE_PRO_v2.4</div>
+                    <div class="text-white mb-1">[14:32:07] MARKET_SCAN: 12 pairs analyzed</div>
+                    <div class="text-market-up mb-1">[14:32:08] SIGNAL_DETECTED: EUR/USD LONG @ 1.0845</div>
+                    <div class="text-market-accent mb-1">[14:32:08] CALCULATING_POSITION_SIZE: Risk 2%, Lot 0.05</div>
+                    <div class="text-market-up mb-1">[14:32:09] ORDER_EXECUTED: BUY 0.05 EUR/USD @ 1.0845</div>
+                    <div class="text-white mb-1">[14:32:09] SL_SET: 1.0820 | TP_SET: 1.0895</div>
+                    <div class="text-market-muted mb-1">[14:32:10] MONITORING_ACTIVE...</div>
+                    <div class="text-market-up cursor-blink mt-4">SYSTEM_ACTIVE_AWAITING_NEXT_SIGNAL</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Partnership Section -->
+    <section id="about" class="py-20 bg-market-card">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="glass-card rounded-2xl p-8 md:p-12 border border-market-gold/20">
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center space-x-2 px-4 py-2 rounded-full bg-market-gold/10 border border-market-gold/30 mb-6">
+                        <i data-lucide="shield" class="w-4 h-4 text-market-gold"></i>
+                        <span class="text-market-gold text-sm font-mono">REGULATED ENTITY</span>
+                    </div>
+                    <h2 class="text-3xl font-bold mb-4">JustMarkets Partnership</h2>
+                    <p class="text-market-muted">
+                        Pipsempire operates in partnership with JustMarkets (PTY) Ltd, 
+                        ensuring full regulatory compliance with the Financial Sector Conduct Authority.
+                    </p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="text-center p-4 rounded-lg bg-black/30 border border-white/5">
+                        <div class="text-xs text-market-muted mb-1">REGISTRATION</div>
+                        <div class="font-mono text-lg">2020/263432/07</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-black/30 border border-white/5">
+                        <div class="text-xs text-market-muted mb-1">FSCA LICENSE</div>
+                        <div class="font-mono text-lg text-market-up">FSP 51114</div>
+                    </div>
+                    <div class="text-center p-4 rounded-lg bg-black/30 border border-white/5">
+                        <div class="text-xs text-market-muted mb-1">LOCATION</div>
+                        <div class="font-mono text-lg">Pretoria, SA</div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 pt-8 border-t border-white/5 text-center">
+                    <p class="text-xs text-market-muted">
+                        Trading in financial markets carries significant risk. Past performance does not guarantee future results.
+                        Only trade with capital you can afford to lose.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-market-bg border-t border-white/5 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8 mb-8">
+                <div class="md:col-span-2">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <i data-lucide="candlestick-chart" class="w-6 h-6 text-market-accent"></i>
+                        <span class="font-bold text-xl">PIPSEMPIRE</span>
+                    </div>
+                    <p class="text-market-muted text-sm max-w-sm">
+                        Advanced algorithmic trading solutions for the modern trader. 
+                        Machine learning powered. Emotion free. 24/5 automated execution.
+                    </p>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4 text-sm">PLATFORM</h4>
+                    <ul class="space-y-2 text-sm text-market-muted">
+                        <li><a href="#" class="hover:text-white transition-colors">INCINERATE Bot</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Live Charts</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Performance</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Support</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold mb-4 text-sm">LEGAL</h4>
+                    <ul class="space-y-2 text-sm text-market-muted">
+                        <li><a href="#" class="hover:text-white transition-colors">Risk Disclosure</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Disclaimer</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-xs text-market-muted">
+                    © 2026 Pipsempire (PTY) LTD. All rights reserved. 
+                    Trading involves substantial risk of loss.
+                </p>
+                <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                    <span class="text-xs text-market-muted">Regulated by FSCA South Africa</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                timeZone: 'Africa/Johannesburg' 
+            });
+            document.getElementById('clock').textContent = timeString + ' SAST';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+        
+        // Chart.js Configuration
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        
+        // Generate initial data
+        const dataPoints = 50;
+        const labels = Array.from({length: dataPoints}, (_, i) => i);
+        let prices = [];
+        let currentPrice = 1.0840;
+        
+        for (let i = 0; i < dataPoints; i++) {
+            currentPrice += (Math.random() - 0.45) * 0.002;
+            prices.push(currentPrice);
+        }
+        
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'EUR/USD',
+                    data: prices,
+                    borderColor: '#00d084',
+                    backgroundColor: 'rgba(0, 208, 132, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(12, 12, 15, 0.9)',
+                        titleColor: '#64748b',
+                        bodyColor: '#e2e8f0',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1,
+                        callbacks: {
+                            label: function(context) {
+                                return context.parsed.y.toFixed(4);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: {
+                        display: true,
+                        position: 'right',
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.03)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#64748b',
+                            font: { family: 'JetBrains Mono', size: 10 },
+                            callback: function(value) {
+                                return value.toFixed(4);
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+        
+        // Simulate live data updates
+        setInterval(() => {
+            const lastPrice = prices[prices.length - 1];
+            const change = (Math.random() - 0.48) * 0.001;
+            const newPrice = lastPrice + change;
+            
+            prices.shift();
+            prices.push(newPrice);
+            
+            chart.data.datasets[0].data = prices;
+            chart.update('none');
+            
+            // Update price display
+            const priceElement = document.querySelector('.text-2xl.font-mono.font-bold');
+            if (priceElement) {
+                priceElement.textContent = (change >= 0 ? '+' : '') + (change * 10000).toFixed(2);
+                priceElement.className = `text-2xl font-mono font-bold ${change >= 0 ? 'text-market-up' : 'text-market-down'}`;
+            }
+        }, 2000);
+        
+        // Animate order book depth bars
+        document.querySelectorAll('.order-row').forEach(row => {
+            const depth = Math.random() * 50 + 10;
+            row.style.setProperty('--depth', depth + '%');
+            row.querySelector('::before') && (row.style.background = `linear-gradient(to right, transparent ${100 - depth}%, currentColor ${100 - depth}%)`);
+        });
+        
+        // GSAP Animations
+        gsap.registerPlugin(ScrollTrigger);
+        
+        gsap.from('.glass-card', {
+            scrollTrigger: {
+                trigger: '#incinerate',
+                start: 'top 80%',
+            },
+            y: 50,
+            opacity: 0,
+            duration: 0.8,
+            stagger: 0.2,
+            ease: 'power3.out'
+        });
+        
+        // Update recent trades
+        const trades = [
+            { time: '14:32:05', type: 'BUY', price: 2.04512, amount: 0.5 },
+            { time: '14:31:58', type: 'SELL', price: 2.04508, amount: 1.2 },
+            { time: '14:31:42', type: 'BUY', price: 2.04515, amount: 0.8 },
+        ];
+        
+        function addNewTrade() {
+            const tradeContainer = document.querySelector('.space-y-2.font-mono.text-xs');
+            if (tradeContainer) {
+                const newTrade = document.createElement('div');
+                newTrade.className = 'flex justify-between items-center animate-pulse';
+                const now = new Date();
+                const timeStr = now.toTimeString().split(' ')[0];
+                const isBuy = Math.random() > 0.4;
+                const price = (2.045 + Math.random() * 0.001).toFixed(5);
+                
+                newTrade.innerHTML = `
+                    <span class="text-market-muted">${timeStr}</span>
+                    <span class="${isBuy ? 'text-market-up' : 'text-market-down'}">${isBuy ? 'BUY' : 'SELL'}</span>
+                    <span>${price}</span>
+                    <span class="text-market-muted">${(Math.random() * 2).toFixed(1)}</span>
+                `;
+                
+                tradeContainer.insertBefore(newTrade, tradeContainer.firstChild);
+                if (tradeContainer.children.length > 5) {
+                    tradeContainer.removeChild(tradeContainer.lastChild);
+                }
+                
+                setTimeout(() => newTrade.classList.remove('animate-pulse'), 1000);
+            }
+        }
+        
+        setInterval(addNewTrade, 3000);
+    </script>
+</body>
+</html>'''
+
+ 
